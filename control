@@ -1,0 +1,9 @@
+Package: org.thebigboss.letmeswitch
+Name: LetMeSwitch
+Depends: mobilesubstrate, firmware (>= 8.0)
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Keyboard choosing from 3rd-party keyboard.
+Maintainer: PoomSmart
+Author: PoomSmart
+Section: Tweaks
