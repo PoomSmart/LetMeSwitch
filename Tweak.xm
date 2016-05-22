@@ -81,13 +81,13 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 		}];
 		[sheet addAction:action];
 	}
-    if (cancelTitle == nil)
-    	cancelTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Cancel" value:@"Cancel" table:@"Localizable"];
-    UIAlertAction *cancel = [UIAlertAction actionWithTitle:cancelTitle style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
-    	[sheet dismissViewControllerAnimated:YES completion:nil];
-    }];
-    [sheet addAction:cancel];
-    [self presentViewController:sheet animated:YES completion:nil];
+	if (cancelTitle == nil)
+		cancelTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Cancel" value:@"Cancel" table:@"Localizable"];
+	UIAlertAction *cancel = [UIAlertAction actionWithTitle:cancelTitle style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+		[sheet dismissViewControllerAnimated:YES completion:nil];
+	}];
+	[sheet addAction:cancel];
+	[self presentViewController:sheet animated:YES completion:nil];
 }
 
 %end
