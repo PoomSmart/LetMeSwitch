@@ -10,14 +10,6 @@
 - (void)toggleSoftwareKeyboard;
 @end
 
-@interface UIKeyboard : NSObject
-+ (UIKeyboard *)activeKeyboard;
-+ (UIKeyboard *)activeKeyboardForScreen:(UIScreen *)screen;
-+ (BOOL)isOnScreen;
-- (BOOL)isMinimized;
-- (void)setMinimized:(BOOL)minimized;
-@end
-
 @interface UIKeyboardMenuView : UIView
 - (void)show;
 - (void)showAsHUD;
@@ -77,18 +69,18 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 	if (sheetTitle == nil)
 		sheetTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Alternate Keyboards" value:@"Alternate Keyboards" table:@"Localizable"];
 	sheet = [[UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet] retain];
-    for (UIKeyboardInputMode *inputMode in UIKeyboardInputModeController.sharedInputModeController.activeInputModes) {
-    	if ([inputMode isEqual:UIKeyboardInputModeController.sharedInputModeController.currentInputMode])
-    		continue;
-    	UIAlertAction *action = [UIAlertAction actionWithTitle:inputMode.displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-    		[self dismissKeyboard];
-    		[(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:inputMode.identifier];
-    		[sheet dismissViewControllerAnimated:YES completion:^{
-    			[UIKeyboardImpl.sharedInstance showKeyboard];
-    		}];
-    	}];
-    	[sheet addAction:action];
-    }
+	for (UIKeyboardInputMode *inputMode in UIKeyboardInputModeController.sharedInputModeController.activeInputModes) {
+		if ([inputMode isEqual:UIKeyboardInputModeController.sharedInputModeController.currentInputMode])
+			continue;
+		UIAlertAction *action = [UIAlertAction actionWithTitle:inputMode.displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+			[self dismissKeyboard];
+			[(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:inputMode.identifier];
+			[sheet dismissViewControllerAnimated:YES completion:^{
+				[UIKeyboardImpl.sharedInstance showKeyboard];
+			}];
+		}];
+		[sheet addAction:action];
+	}
     if (cancelTitle == nil)
     	cancelTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Cancel" value:@"Cancel" table:@"Localizable"];
     UIAlertAction *cancel = [UIAlertAction actionWithTitle:cancelTitle style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
