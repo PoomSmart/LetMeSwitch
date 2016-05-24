@@ -1,4 +1,7 @@
 #import "../PS.h"
+#if DEBUG
+#import "InspectiveC.h"
+#endif
 
 @interface UIKeyboardImpl : NSObject
 + (UIKeyboardImpl *)sharedInstance;
@@ -47,7 +50,6 @@
 - (void)switchToCurrentSystemInputMode;
 @end
 
-static UIAlertController *sheet;
 static NSString *sheetTitle = nil;
 static NSString *cancelTitle = nil;
 
@@ -63,21 +65,17 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 
 - (void)advanceToNextInputMode
 {
-	if (sheet)
-		[sheet release];
-	[UIKeyboardImpl.sharedInstance recomputeActiveInputModesWithExtensions:YES];
+	// No, you never call this
+	// [UIKeyboardImpl.sharedInstance recomputeActiveInputModesWithExtensions:YES];
 	if (sheetTitle == nil)
 		sheetTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Alternate Keyboards" value:@"Alternate Keyboards" table:@"Localizable"];
-	sheet = [[UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet] retain];
+	UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet];
 	for (UIKeyboardInputMode *inputMode in UIKeyboardInputModeController.sharedInputModeController.activeInputModes) {
 		if ([inputMode isEqual:UIKeyboardInputModeController.sharedInputModeController.currentInputMode])
 			continue;
 		UIAlertAction *action = [UIAlertAction actionWithTitle:inputMode.displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-			[self dismissKeyboard];
 			[(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:inputMode.identifier];
-			[sheet dismissViewControllerAnimated:YES completion:^{
-				[UIKeyboardImpl.sharedInstance showKeyboard];
-			}];
+			[sheet dismissViewControllerAnimated:YES completion:nil];
 		}];
 		[sheet addAction:action];
 	}
@@ -104,8 +102,12 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 			BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
 			BOOL isExtension = isExtensionOrApp && [executablePath rangeOfString:@"appex"].location != NSNotFound;
 			if (isExtension) {
-				MSHookFunction(_UIApplicationAssertForExtensionType, MSHake(_UIApplicationAssertForExtensionType));
-				%init(Extension);
+				id val = NSBundle.mainBundle.infoDictionary[@"NSExtension"][@"NSExtensionPointIdentifier"];
+				BOOL isKeyboardExtension = val ? [val isEqualToString:@"com.apple.keyboard-service"] : NO;
+				if (isKeyboardExtension) {
+					MSHookFunction(_UIApplicationAssertForExtensionType, MSHake(_UIApplicationAssertForExtensionType));
+					%init(Extension);
+				}
 			}
 		}
 	}

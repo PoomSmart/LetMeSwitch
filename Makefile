@@ -5,6 +5,7 @@ include $(THEOS)/makefiles/common.mk
 
 TWEAK_NAME = LetMeSwitch
 LetMeSwitch_FILES = Tweak.xm
+#LetMeSwitch_LIBRARIES = inspectivec
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
