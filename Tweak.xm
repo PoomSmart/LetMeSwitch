@@ -1,17 +1,5 @@
 #import "../PS.h"
-#if DEBUG
-#import "InspectiveC.h"
-#endif
-
-@interface UIKeyboardImpl : NSObject
-+ (UIKeyboardImpl *)sharedInstance;
-+ (UIKeyboardImpl *)activeInstance;
-- (BOOL)isMinimized;
-- (void)recomputeActiveInputModesWithExtensions:(BOOL)extensions;
-- (void)showKeyboard;
-- (void)hideKeyboard;
-- (void)toggleSoftwareKeyboard;
-@end
+#import <substrate.h>
 
 @interface UIKeyboardMenuView : UIView
 - (void)show;
@@ -31,29 +19,59 @@
 - (void)showSwitcherShouldAutoHide:(BOOL)autoHide; // 9.1
 @end
 
-@interface UIKeyboardInputMode : NSObject
-+ (UIKeyboardInputMode *)keyboardInputModeWithIdentifier:(NSString *)identifier;
-@property(nonatomic, assign) NSString *identifier;
-@property(nonatomic, assign) NSString *normalizedIdentifier;
-@property(nonatomic, assign) NSString *primaryLanguage;
-- (NSString *)displayName;
-- (BOOL)isExtensionInputMode;
+@interface _UIInputViewControllerState : NSObject
 @end
 
-@interface UIKeyboardInputModeController : NSObject
-+ (UIKeyboardInputModeController *)sharedInputModeController;
-@property(atomic, strong, readwrite) NSArray *normalizedInputModes;
-@property(retain, nonatomic) UIKeyboardInputMode *lastUsedInputMode;
-- (NSArray *)activeInputModes;
-- (UIKeyboardInputMode *)currentInputMode;
-- (UIKeyboardInputMode *)inputModeWithIdentifier:(NSString *)identifier;
-- (void)switchToCurrentSystemInputMode;
+@interface _UIInputViewControllerOutput : NSObject
 @end
+
+@protocol _UIIVCResponseDelegate <NSObject>
+@required
+- (void)_performInputViewControllerOutput:(_UIInputViewControllerOutput *)output;
+@end
+
+// Hax
+@protocol _UIIVCResponseDelegate2 <NSObject>
+@required
+- (void)_performInputViewControllerOutput:(_UIInputViewControllerOutput *)output;
+- (void)lms_getActiveInputModes:(id)arg1;
+- (UIKeyboardInputMode *)lms_getCurrentInputMode:(id)arg1;
+- (void)lms_setInputMode:(NSString *)identifier foo:(id)arg2;
+@end
+
+@protocol _UIIVCInterface <NSObject>
+@required
+- (void)_handleInputViewControllerState:(_UIInputViewControllerState *)state;
+- (void)_tearDownRemoteService;
+- (id <_UIIVCResponseDelegate>)responseDelegate;
+- (void)setResponseDelegate:(id <_UIIVCResponseDelegate>)delegate;
+@end
+
+@interface UIInputViewControllerInterface : NSObject
+@property (nonatomic, retain) id <_UIIVCInterface> forwardingInterface;
+@property (nonatomic, retain) id <_UIIVCResponseDelegate> responseDelegate;
+@end
+
+@interface _UITextDocumentInterface : UIInputViewControllerInterface <UITextDocumentProxy>
+- (_UIInputViewControllerOutput *)_controllerOutput;
+- (void)_willPerformOutputOperation;
+- (void)_didPerformOutputOperation;
+- (void)setControllerOutput:(_UIInputViewControllerOutput *)output;
+@end
+
+@interface UIInputViewController (Private)
+- (_UITextDocumentInterface *)_textDocumentInterface;
+@end
+
+@interface _UIInputViewControllerOutput (LetMeSwitch)
+@property(assign, nonatomic) BOOL request;
+@property(retain, nonatomic) NSString *identifier;
+@end
+
+%group Extension
 
 static NSString *sheetTitle = nil;
 static NSString *cancelTitle = nil;
-
-%group Extension
 
 extern "C" void _UIApplicationAssertForExtensionType(NSArray *);
 MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
@@ -65,16 +83,20 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 
 - (void)advanceToNextInputMode
 {
-	// No, you never call this
-	// [UIKeyboardImpl.sharedInstance recomputeActiveInputModesWithExtensions:YES];
 	if (sheetTitle == nil)
 		sheetTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Alternate Keyboards" value:@"Alternate Keyboards" table:@"Localizable"];
 	UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+	_UITextDocumentInterface *interface = [self _textDocumentInterface];
+	_UIInputViewControllerOutput *output = [interface _controllerOutput];
 	for (UIKeyboardInputMode *inputMode in UIKeyboardInputModeController.sharedInputModeController.activeInputModes) {
 		if ([inputMode isEqual:UIKeyboardInputModeController.sharedInputModeController.currentInputMode])
 			continue;
 		UIAlertAction *action = [UIAlertAction actionWithTitle:inputMode.displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-			[(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:inputMode.identifier];
+			NSString *identifier = inputMode.identifier;
+			[interface _willPerformOutputOperation];
+			output.identifier = identifier;
+			output.request = YES;
+			[interface _didPerformOutputOperation];
 			[sheet dismissViewControllerAnimated:YES completion:nil];
 		}];
 		[sheet addAction:action];
@@ -92,6 +114,66 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 
 %end
 
+%group App
+
+%hook UIKeyboardImpl
+
+- (void)_completePerformInputViewControllerOutput:(_UIInputViewControllerOutput *)output executionContext:(UIKeyboardTaskExecutionContext *)context
+{
+	if (output.request) {
+		output.request = NO;
+		NSString *identifier = output.identifier;
+		if (identifier) {
+			[(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:identifier];
+			output.identifier = nil;
+		}
+	}
+	%orig;
+}
+
+%end
+
+%end
+
+%group Transition
+
+%hook _UIInputViewControllerOutput
+
+%property(assign, nonatomic) BOOL request;
+%property(retain, nonatomic) NSString *identifier;
+
+- (_UIInputViewControllerOutput *)copyWithZone:(NSZone *)zone
+{
+	_UIInputViewControllerOutput *output = %orig;
+	if (output) {
+		output.request = self.request;
+		output.identifier = self.identifier;
+	}
+	return output;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder
+{
+	%orig;
+	[coder encodeBool:self.request forKey:@"request"];
+	if (self.identifier)
+		[coder encodeObject:self.identifier forKey:@"identifier"];
+}
+
+- (_UIInputViewControllerOutput *)initWithCoder:(NSCoder *)coder
+{
+	_UIInputViewControllerOutput *output = %orig;
+	if (output) {
+		output.request = [coder decodeBoolForKey:@"request"];
+		output.identifier = [[coder decodeObjectOfClass:[NSString class] forKey:@"identifier"] retain];
+	}
+	return output;
+}
+
+%end
+
+%end
+
 %ctor
 {
 	NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
@@ -99,15 +181,25 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 	if (count != 0) {
 		NSString *executablePath = args[0];
 		if (executablePath) {
+			BOOL shouldTransition = NO;
 			BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
-			BOOL isExtension = isExtensionOrApp && [executablePath rangeOfString:@"appex"].location != NSNotFound;
-			if (isExtension) {
-				id val = NSBundle.mainBundle.infoDictionary[@"NSExtension"][@"NSExtensionPointIdentifier"];
-				BOOL isKeyboardExtension = val ? [val isEqualToString:@"com.apple.keyboard-service"] : NO;
-				if (isKeyboardExtension) {
-					MSHookFunction(_UIApplicationAssertForExtensionType, MSHake(_UIApplicationAssertForExtensionType));
-					%init(Extension);
+			if (isExtensionOrApp) {
+				BOOL isExtension = [executablePath rangeOfString:@"appex"].location != NSNotFound;
+				if (isExtension) {
+					id val = NSBundle.mainBundle.infoDictionary[@"NSExtension"][@"NSExtensionPointIdentifier"];
+					BOOL isKeyboardExtension = val ? [val isEqualToString:@"com.apple.keyboard-service"] : NO;
+					if (isKeyboardExtension) {
+						MSHookFunction(_UIApplicationAssertForExtensionType, MSHake(_UIApplicationAssertForExtensionType));
+						%init(Extension);
+						shouldTransition = YES;
+					}
+				} else {
+					%init(App);
+					shouldTransition = YES;
 				}
+			}
+			if (shouldTransition) {
+				%init(Transition);
 			}
 		}
 	}
