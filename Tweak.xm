@@ -74,40 +74,39 @@ static NSString *sheetTitle = nil;
 static NSString *cancelTitle = nil;
 
 extern "C" void _UIApplicationAssertForExtensionType(NSArray *);
-MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
-{
-	return;
+%hookf(void, _UIApplicationAssertForExtensionType, NSArray *arg1) {
+    return;
 }
 
 %hook UIInputViewController
 
 - (void)advanceToNextInputMode
 {
-	if (sheetTitle == nil)
-		sheetTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Alternate Keyboards" value:@"Alternate Keyboards" table:@"Localizable"];
-	UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet];
-	_UITextDocumentInterface *interface = [self _textDocumentInterface];
-	_UIInputViewControllerOutput *output = [interface _controllerOutput];
-	for (UIKeyboardInputMode *inputMode in UIKeyboardInputModeController.sharedInputModeController.activeInputModes) {
-		if ([inputMode isEqual:UIKeyboardInputModeController.sharedInputModeController.currentInputMode])
-			continue;
-		UIAlertAction *action = [UIAlertAction actionWithTitle:inputMode.displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
-			NSString *identifier = inputMode.identifier;
-			[interface _willPerformOutputOperation];
-			output.identifier = identifier;
-			output.request = YES;
-			[interface _didPerformOutputOperation];
-			[sheet dismissViewControllerAnimated:YES completion:nil];
-		}];
-		[sheet addAction:action];
-	}
-	if (cancelTitle == nil)
-		cancelTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Cancel" value:@"Cancel" table:@"Localizable"];
-	UIAlertAction *cancel = [UIAlertAction actionWithTitle:cancelTitle style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
-		[sheet dismissViewControllerAnimated:YES completion:nil];
-	}];
-	[sheet addAction:cancel];
-	[self presentViewController:sheet animated:YES completion:nil];
+    if (sheetTitle == nil)
+        sheetTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Alternate Keyboards" value:@"Alternate Keyboards" table:@"Localizable"];
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    _UITextDocumentInterface *interface = [self _textDocumentInterface];
+    _UIInputViewControllerOutput *output = [interface _controllerOutput];
+    for (UIKeyboardInputMode *inputMode in UIKeyboardInputModeController.sharedInputModeController.activeInputModes) {
+        if ([inputMode isEqual:UIKeyboardInputModeController.sharedInputModeController.currentInputMode])
+            continue;
+        UIAlertAction *action = [UIAlertAction actionWithTitle:inputMode.displayName style:UIAlertActionStyleDefault handler:^(UIAlertAction *action) {
+            NSString *identifier = inputMode.identifier;
+            [interface _willPerformOutputOperation];
+            output.identifier = identifier;
+            output.request = YES;
+            [interface _didPerformOutputOperation];
+            [sheet dismissViewControllerAnimated:YES completion:nil];
+        }];
+        [sheet addAction:action];
+    }
+    if (cancelTitle == nil)
+        cancelTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Cancel" value:@"Cancel" table:@"Localizable"];
+    UIAlertAction *cancel = [UIAlertAction actionWithTitle:cancelTitle style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
+        [sheet dismissViewControllerAnimated:YES completion:nil];
+    }];
+    [sheet addAction:cancel];
+    [self presentViewController:sheet animated:YES completion:nil];
 }
 
 %end
@@ -118,17 +117,17 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 
 %hook UIKeyboardImpl
 
-- (void)_completePerformInputViewControllerOutput:(_UIInputViewControllerOutput *)output executionContext:(UIKeyboardTaskExecutionContext *)context
+- (void)_completePerformInputViewControllerOutput: (_UIInputViewControllerOutput *)output executionContext: (UIKeyboardTaskExecutionContext *)context
 {
-	if (output.request) {
-		output.request = NO;
-		NSString *identifier = output.identifier;
-		if (identifier) {
-			[(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:identifier];
-			output.identifier = nil;
-		}
-	}
-	%orig;
+    if (output.request) {
+        output.request = NO;
+        NSString *identifier = output.identifier;
+        if (identifier) {
+            [(UIInputSwitcherView *)[objc_getClass("UIInputSwitcherView") sharedInstance] setInputMode:identifier];
+            output.identifier = nil;
+        }
+    }
+    %orig;
 }
 
 %end
@@ -142,32 +141,29 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 %property(assign, nonatomic) BOOL request;
 %property(retain, nonatomic) NSString *identifier;
 
-- (_UIInputViewControllerOutput *)copyWithZone:(NSZone *)zone
-{
-	_UIInputViewControllerOutput *output = %orig;
-	if (output) {
-		output.request = self.request;
-		output.identifier = self.identifier;
-	}
-	return output;
+- (_UIInputViewControllerOutput *)copyWithZone:(NSZone *)zone {
+    _UIInputViewControllerOutput *output = %orig;
+    if (output) {
+        output.request = self.request;
+        output.identifier = self.identifier;
+    }
+    return output;
 }
 
-- (void)encodeWithCoder:(NSCoder *)coder
-{
-	%orig;
-	[coder encodeBool:self.request forKey:@"request"];
-	if (self.identifier)
-		[coder encodeObject:self.identifier forKey:@"identifier"];
+- (void)encodeWithCoder:(NSCoder *)coder {
+    %orig;
+    [coder encodeBool:self.request forKey:@"request"];
+    if (self.identifier)
+        [coder encodeObject:self.identifier forKey:@"identifier"];
 }
 
-- (_UIInputViewControllerOutput *)initWithCoder:(NSCoder *)coder
-{
-	_UIInputViewControllerOutput *output = %orig;
-	if (output) {
-		output.request = [coder decodeBoolForKey:@"request"];
-		output.identifier = [[coder decodeObjectOfClass:[NSString class] forKey:@"identifier"] retain];
-	}
-	return output;
+- (_UIInputViewControllerOutput *)initWithCoder:(NSCoder *)coder {
+    _UIInputViewControllerOutput *output = %orig;
+    if (output) {
+        output.request = [coder decodeBoolForKey:@"request"];
+        output.identifier = [[coder decodeObjectOfClass:[NSString class] forKey:@"identifier"] retain];
+    }
+    return output;
 }
 
 %end
@@ -176,31 +172,29 @@ MSHook(void, _UIApplicationAssertForExtensionType, NSArray *arg1)
 
 %ctor
 {
-	NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
-	NSUInteger count = args.count;
-	if (count != 0) {
-		NSString *executablePath = args[0];
-		if (executablePath) {
-			BOOL shouldTransition = NO;
-			BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
-			if (isExtensionOrApp) {
-				BOOL isExtension = [executablePath rangeOfString:@"appex"].location != NSNotFound;
-				if (isExtension) {
-					id val = NSBundle.mainBundle.infoDictionary[@"NSExtension"][@"NSExtensionPointIdentifier"];
-					BOOL isKeyboardExtension = val ? [val isEqualToString:@"com.apple.keyboard-service"] : NO;
-					if (isKeyboardExtension) {
-						MSHookFunction(_UIApplicationAssertForExtensionType, MSHake(_UIApplicationAssertForExtensionType));
-						%init(Extension);
-						shouldTransition = YES;
-					}
-				} else {
-					%init(App);
-					shouldTransition = YES;
-				}
-			}
-			if (shouldTransition) {
-				%init(Transition);
-			}
-		}
-	}
+    NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
+    if (args.count) {
+        NSString *executablePath = args[0];
+        if (executablePath) {
+            BOOL shouldTransition = NO;
+            BOOL isExtensionOrApp = [executablePath rangeOfString:@"/Application"].location != NSNotFound;
+            if (isExtensionOrApp) {
+                BOOL isExtension = [executablePath rangeOfString:@"appex"].location != NSNotFound;
+                if (isExtension) {
+                    id val = NSBundle.mainBundle.infoDictionary[@"NSExtension"][@"NSExtensionPointIdentifier"];
+                    BOOL isKeyboardExtension = val ? [val isEqualToString:@"com.apple.keyboard-service"] : NO;
+                    if (isKeyboardExtension) {
+                        %init(Extension);
+                        shouldTransition = YES;
+                    }
+                } else {
+                    %init(App);
+                    shouldTransition = YES;
+                }
+            }
+            if (shouldTransition) {
+                %init(Transition);
+            }
+        }
+    }
 }
