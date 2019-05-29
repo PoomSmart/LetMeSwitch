@@ -80,8 +80,7 @@ extern "C" void _UIApplicationAssertForExtensionType(NSArray *);
 
 %hook UIInputViewController
 
-- (void)advanceToNextInputMode
-{
+- (void)advanceToNextInputMode {
     if (sheetTitle == nil)
         sheetTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Alternate Keyboards" value:@"Alternate Keyboards" table:@"Localizable"];
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle message:nil preferredStyle:UIAlertControllerStyleActionSheet];
@@ -96,17 +95,17 @@ extern "C" void _UIApplicationAssertForExtensionType(NSArray *);
             output.identifier = identifier;
             output.request = YES;
             [interface _didPerformOutputOperation];
-            [sheet dismissViewControllerAnimated:YES completion:nil];
+            [sheet dismissViewControllerAnimated:YES completion:NULL];
         }];
         [sheet addAction:action];
     }
     if (cancelTitle == nil)
         cancelTitle = [[NSBundle bundleForClass:[UIApplication class]] localizedStringForKey:@"Cancel" value:@"Cancel" table:@"Localizable"];
     UIAlertAction *cancel = [UIAlertAction actionWithTitle:cancelTitle style:UIAlertActionStyleCancel handler:^(UIAlertAction *action) {
-        [sheet dismissViewControllerAnimated:YES completion:nil];
+        [sheet dismissViewControllerAnimated:YES completion:NULL];
     }];
     [sheet addAction:cancel];
-    [self presentViewController:sheet animated:YES completion:nil];
+    [self presentViewController:sheet animated:YES completion:NULL];
 }
 
 %end
@@ -170,8 +169,7 @@ extern "C" void _UIApplicationAssertForExtensionType(NSArray *);
 
 %end
 
-%ctor
-{
+%ctor {
     NSArray *args = [[NSClassFromString(@"NSProcessInfo") processInfo] arguments];
     if (args.count) {
         NSString *executablePath = args[0];
