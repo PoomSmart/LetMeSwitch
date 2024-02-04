@@ -2,10 +2,10 @@ DEBUG = 0
 SIMULATOR = 0
 
 ifeq ($(SIMULATOR),1)
-	TARGET = simulator:clang:latest
+	TARGET = simulator:clang:latest:8.0
 	ARCHS = x86_64 i386
 else
-	TARGET = iphone:clang:latest
+	TARGET = iphone:clang:latest:8.0
 	ARCHS = armv7 arm64
 endif
 

@@ -1,5 +1,7 @@
-#import "../PS.h"
 #import <substrate.h>
+#import <UIKit/UIKit.h>
+#import <UIKit/UIKeyboardTaskExecutionContext.h>
+#import <UIKit/UIKeyboardInputModeController.h>
 
 @interface UIKeyboardMenuView : UIView
 - (void)show;
