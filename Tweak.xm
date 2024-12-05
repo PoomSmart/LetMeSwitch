@@ -11,7 +11,7 @@
 @interface UIInputSwitcherView : UIKeyboardMenuView
 + (UIInputSwitcherView *)sharedInstance;
 + (UIInputSwitcherView *)activeInstance;
-- (void)setInputMode:(NSString *)identifer;
+- (void)setInputMode:(NSString *)identifier;
 @end
 
 @interface UIInputSwitcher : NSObject
@@ -118,8 +118,7 @@ extern "C" void _UIApplicationAssertForExtensionType(NSArray *);
 
 %hook UIKeyboardImpl
 
-- (void)_completePerformInputViewControllerOutput: (_UIInputViewControllerOutput *)output executionContext: (UIKeyboardTaskExecutionContext *)context
-{
+- (void)_completePerformInputViewControllerOutput:(_UIInputViewControllerOutput *)output executionContext:(UIKeyboardTaskExecutionContext *)context {
     if (output.request) {
         output.request = NO;
         NSString *identifier = output.identifier;
